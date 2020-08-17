@@ -24,7 +24,10 @@ namespace ExpenseTracker.App
 
             //Connection String
             services.AddDbContext<ShoelessJoeContext>(options =>
-            options.UseSqlServer(Configuration.GetConnectionString("SholessJoeContext")));
+                options.UseSqlServer(Configuration.GetConnectionString("SholessJoeContext")));
+            
+            //Swagger
+            services.AddSwaggerGen();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -36,6 +39,13 @@ namespace ExpenseTracker.App
             }
 
             app.UseHttpsRedirection();
+
+            //Swagger
+            app.UseSwagger();
+
+            app.UseSwaggerUI(c => {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Expense Tracker");    
+            });
 
             app.UseRouting();
 
