@@ -1,6 +1,6 @@
 ﻿namespace ExpenseTracker.App.ApiModels
 {
-    public class CoreNonBills
+    public class ApiNonBills
     {
         public int NonBillId { get; set; }
         public int UserId { get; set; }
