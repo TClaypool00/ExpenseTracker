@@ -1,10 +1,11 @@
 ﻿using ExpenseTracker.Core.CoreModels;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ExpenseTracker.Core.Interfaces
 {
-    public interface ICreditUnion
+    public interface ICreditUnionRepository
     {
         Task<List<CoreCreditUnion>> GetCreditUnionsAsync(string search = null);
 
