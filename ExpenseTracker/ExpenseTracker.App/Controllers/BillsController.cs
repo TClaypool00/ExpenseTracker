@@ -1,6 +1,10 @@
-﻿using ExpenseTracker.DataAccess.DataModels;
+﻿using ExpenseTracker.App.ApiModels;
+using ExpenseTracker.Core.CoreModels;
+using ExpenseTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,97 +15,137 @@ namespace ExpenseTracker.App.Controllers
     [ApiController]
     public class BillsController : ControllerBase
     {
-        private readonly ShoelessJoeContext _context;
+        private readonly IBillRepository _repo;
+        private readonly IUserRepository _userRepo;
 
-        public BillsController(ShoelessJoeContext context)
+        public BillsController(IBillRepository repo, IUserRepository userRepo)
         {
-            _context = context;
+            _repo = repo;
+            _userRepo = userRepo;
         }
 
         // GET: api/Bills
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Bills>>> GetBills()
+        [ProducesResponseType(typeof(List<ApiBills>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetBills([FromQuery] string search = null)
         {
-            return await _context.Bills.ToListAsync();
+            var bills = new List<ApiBills>();
+
+            if (bills == null)
+                return NotFound("There are not bills");
+
+            if (search != null)
+                bills = (await _repo.GetBillsAsync(search)).Select(ApiMapper.MapBills).ToList();
+            else
+                bills = (await _repo.GetBillsAsync()).Select(ApiMapper.MapBills).ToList();
+
+            try
+            {
+                return Ok(bills);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Something went wrong");
+            }
         }
 
         // GET: api/Bills/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Bills>> GetBills(int id)
+        [ProducesResponseType(typeof(ApiBills), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetBills(int id)
         {
-            var bills = await _context.Bills.FindAsync(id);
-
-            if (bills == null)
+            if(await _repo.GetBillById(id) is CoreBills bill)
             {
-                return NotFound();
+                var transformed = ApiMapper.MapBills(bill);
+
+                return Ok(transformed);
             }
 
-            return bills;
+            return NotFound("No Bills found");
         }
 
         // PUT: api/Bills/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutBills(int id, Bills bills)
+        public async Task<IActionResult> PutBills(int id, ApiBills bills)
         {
             if (id != bills.BillId)
             {
-                return BadRequest();
+                return BadRequest("Bill does not Exist");
             }
 
-            _context.Entry(bills).State = EntityState.Modified;
+            var resource = new CoreBills
+            {
+                BillId = bills.BillId,
+                BillLate = bills.BillLate,
+                BillName = bills.BillName,
+                BillPrice = bills.BillPrice,
+                DueDate = bills.DueDate,
+                User = await _userRepo.GetUserById(bills.UserId)
+            };
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _repo.UpdateBillAsync(resource);
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!BillsExists(id))
-                {
-                    return NotFound();
-                }
+                if (await _repo.BillExistAsync(id))
+                    return NotFound("Bill not found");
                 else
-                {
                     throw;
-                }
             }
 
-            return NoContent();
+            return Ok("Bill updated!");
         }
 
         // POST: api/Bills
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<Bills>> PostBills(Bills bills)
+        public async Task<ActionResult> PostBills(ApiBills bills)
         {
-            _context.Bills.Add(bills);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var resource = new CoreBills
+                {
+                    BillId = bills.BillId,
+                    BillLate = bills.BillLate,
+                    BillName = bills.BillName,
+                    BillPrice = bills.BillPrice,
+                    DueDate = bills.DueDate,
+                    User = await _userRepo.GetUserById(bills.UserId)
+                };
 
-            return CreatedAtAction("GetBills", new { id = bills.BillId }, bills);
+                await _repo.AddBillAsync(resource);
+
+                return Ok("Bill had been added!");
+            }
+            catch (Exception)
+            {
+                return BadRequest("Something went wrong");
+            }
         }
 
         // DELETE: api/Bills/5
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Bills>> DeleteBills(int id)
+        public async Task<ActionResult> DeleteBills(int id)
         {
-            var bills = await _context.Bills.FindAsync(id);
-            if (bills == null)
+            try
             {
-                return NotFound();
+                if (await _repo.GetBillById(id) is CoreBills bill)
+                {
+                    await _repo.RemoveBillAsync(bill.BillId);
+                    return Ok("Bill has been removed");
+                }
+            }
+            catch (Exception)
+            {
+                return BadRequest("Something went wrong");
             }
 
-            _context.Bills.Remove(bills);
-            await _context.SaveChangesAsync();
-
-            return bills;
-        }
-
-        private bool BillsExists(int id)
-        {
-            return _context.Bills.Any(e => e.BillId == id);
+            return NotFound("Bill does not exist");
         }
     }
 }
