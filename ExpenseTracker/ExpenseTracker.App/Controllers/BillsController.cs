@@ -32,7 +32,7 @@ namespace ExpenseTracker.App.Controllers
         {
             var bills = new List<ApiBills>();
 
-            if (bills == null)
+            if (bills.Count == 0)
                 return NotFound("There are not bills");
 
             if (search != null)

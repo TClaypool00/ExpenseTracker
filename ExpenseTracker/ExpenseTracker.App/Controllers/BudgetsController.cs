@@ -32,20 +32,23 @@ namespace ExpenseTracker.App.Controllers
         {
             var budgets = new List<ApiBudget>();
 
-            if (budgets == null)
-                return NotFound("No budgets found");
-            if (search != null)
-                budgets = (await _repo.GetBudgetsAsync(search)).Select(ApiMapper.MapBudgets).ToList();
+            if (budgets.Count == 0)
+                return NotFound("No budgets found.");
             else
-                budgets = (await _repo.GetBudgetsAsync()).Select(ApiMapper.MapBudgets).ToList();
+            {
+                if (search != null)
+                    budgets = (await _repo.GetBudgetsAsync(search)).Select(ApiMapper.MapBudgets).ToList();
+                else
+                    budgets = (await _repo.GetBudgetsAsync()).Select(ApiMapper.MapBudgets).ToList();
 
-            try
-            {
-                return Ok(budgets);
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Something went wrong");
+                try
+                {
+                    return Ok(budgets);
+                }
+                catch (Exception)
+                {
+                    return StatusCode(500, "Something went wrong");
+                }
             }
         }
 
