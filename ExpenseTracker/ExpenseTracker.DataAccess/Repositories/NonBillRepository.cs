@@ -6,7 +6,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace ExpenseTracker.DataAccess
+namespace ExpenseTracker.DataAccess.Repositories
 {
     public class NonBillRepository : INonBillsRepository, ISave
     {
