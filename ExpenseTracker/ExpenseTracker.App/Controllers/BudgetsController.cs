@@ -1,6 +1,10 @@
-﻿using ExpenseTracker.DataAccess.DataModels;
+﻿using ExpenseTracker.App.ApiModels;
+using ExpenseTracker.Core.CoreModels;
+using ExpenseTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,97 +15,130 @@ namespace ExpenseTracker.App.Controllers
     [ApiController]
     public class BudgetsController : ControllerBase
     {
-        private readonly ShoelessJoeContext _context;
+        private readonly IBudgetRepository _repo;
+        private readonly IUserRepository _userRepo;
 
-        public BudgetsController(ShoelessJoeContext context)
+        public BudgetsController(IBudgetRepository repo, IUserRepository userRepo)
         {
-            _context = context;
+            _repo = repo;
+            _userRepo = userRepo;
         }
 
         // GET: api/Budgets
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Budget>>> GetBudget()
+        [ProducesResponseType(typeof(List<ApiBudget>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetBudget([FromQuery] string search = null)
         {
-            return await _context.Budget.ToListAsync();
+            var budgets = new List<ApiBudget>();
+
+            if (budgets == null)
+                return NotFound("No budgets found");
+            if (search != null)
+                budgets = (await _repo.GetBudgetsAsync(search)).Select(ApiMapper.MapBudgets).ToList();
+            else
+                budgets = (await _repo.GetBudgetsAsync()).Select(ApiMapper.MapBudgets).ToList();
+
+            try
+            {
+                return Ok(budgets);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Something went wrong");
+            }
         }
 
         // GET: api/Budgets/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Budget>> GetBudget(int id)
+        [ProducesResponseType(typeof(ApiBudget), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetBudget(int id)
         {
-            var budget = await _context.Budget.FindAsync(id);
-
-            if (budget == null)
+            if(await _repo.GetBudgetById(id) is CoreBudget budget)
             {
-                return NotFound();
+                var transformed = ApiMapper.MapBudgets(budget);
+
+                return Ok(transformed);
             }
 
-            return budget;
+            return NotFound("No budgets found");
         }
 
         // PUT: api/Budgets/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutBudget(int id, Budget budget)
+        public async Task<IActionResult> PutBudget(int id, ApiBudget budget)
         {
             if (id != budget.BudgetId)
             {
-                return BadRequest();
+                return BadRequest("Budget does not exist.");
             }
 
-            _context.Entry(budget).State = EntityState.Modified;
+            var resource = new CoreBudget
+            {
+                BudgetId = budget.BudgetId,
+                TotalAmtBills = budget.TotalAmtBills,
+                User = (await _userRepo.GetUserById(budget.UserId))
+            };
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _repo.UpdateBudgetAsync(resource);
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!BudgetExists(id))
-                {
-                    return NotFound();
-                }
+                if (await _repo.BudgetExistAsync(id))
+                    return NotFound("Budget not found.");
                 else
-                {
                     throw;
-                }
             }
 
-            return NoContent();
+            return Ok("Budget updated!");
         }
 
         // POST: api/Budgets
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<Budget>> PostBudget(Budget budget)
+        public async Task<ActionResult> PostBudget(ApiBudget budget)
         {
-            _context.Budget.Add(budget);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var resource = new CoreBudget
+                {
+                    BudgetId = budget.BudgetId,
+                    TotalAmtBills = budget.TotalAmtBills,
+                    User = (await _userRepo.GetUserById(budget.UserId))
+                };
 
-            return CreatedAtAction("GetBudget", new { id = budget.BudgetId }, budget);
+                await _repo.AddBudgetAsync(resource);
+
+                return Ok("Budget has been added!");
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e);
+            }
         }
 
         // DELETE: api/Budgets/5
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Budget>> DeleteBudget(int id)
+        public async Task<ActionResult> DeleteBudget(int id)
         {
-            var budget = await _context.Budget.FindAsync(id);
-            if (budget == null)
+            try
             {
-                return NotFound();
+                if(await _repo.GetBudgetById(id) is CoreBudget budget)
+                {
+                    await _repo.RemoveBudgetAsync(budget.BudgetId);
+                    return Ok("Budget has been removed.");
+                }
+            }
+            catch(Exception e)
+            {
+                return BadRequest(e);
             }
 
-            _context.Budget.Remove(budget);
-            await _context.SaveChangesAsync();
-
-            return budget;
-        }
-
-        private bool BudgetExists(int id)
-        {
-            return _context.Budget.Any(e => e.BudgetId == id);
+            return NotFound("Budget does not exist");
         }
     }
 }
