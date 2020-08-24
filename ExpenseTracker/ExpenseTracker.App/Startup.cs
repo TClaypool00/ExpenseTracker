@@ -1,10 +1,13 @@
+using ExpenseTracker.Core.Interfaces;
 using ExpenseTracker.DataAccess.DataModels;
+using ExpenseTracker.DataAccess.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.OpenApi.Models;
 
 namespace ExpenseTracker.App
 {
@@ -27,7 +30,19 @@ namespace ExpenseTracker.App
                 options.UseSqlServer(Configuration.GetConnectionString("SholessJoeContext")));
             
             //Swagger
-            services.AddSwaggerGen();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Expense Tracker API", Version = "v1" });
+            });
+
+            //Dependency Injection
+            services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IBillRepository, BillRepository>();
+            services.AddScoped<IBudgetRepository, BudgetRepository>();
+            services.AddScoped<ICreditUnionRepository, CreditUnionRepository>();
+            services.AddScoped<INonBillsRepository, NonBillRepository>();
+            services.AddScoped<ISubscriptionsRepository, SubscriptionsRepository>();
+            services.AddScoped<ISave, UserRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
