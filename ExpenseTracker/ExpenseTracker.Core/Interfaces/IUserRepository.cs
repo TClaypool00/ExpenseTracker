@@ -8,6 +8,8 @@ namespace ExpenseTracker.Core.Interfaces
     {
         Task<List<CoreUsers>> GetUsersAsync(string search = null);
 
+        Task<CoreUsers> GetUserByEmail(string email);
+
         Task<CoreUsers> GetUserById(int id);
 
         Task<bool> UserExistAsync(int id);
