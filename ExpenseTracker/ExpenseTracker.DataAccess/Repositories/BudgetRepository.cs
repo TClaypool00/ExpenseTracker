@@ -43,23 +43,40 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapBudget(budget);
         }
 
-        public async Task<List<CoreBudget>> GetBudgetsAsync(string search = null)
+        public async Task<List<CoreBudget>> GetBudgetsAsync(string search = null, string userId = null)
         {
-            var budgets = await _context.Budget
-                .Include(u => u.User)
-                .ToListAsync();
+            if (userId == null)
+            {
+                var budgets = await _context.Budget
+                    .Include(u => u.User)
+                    .ToListAsync();
 
-            if (search == null)
-                return budgets.Select(Mapper.MapBudget).ToList();
+                if (search == null)
+                    return budgets.Select(Mapper.MapBudget).ToList();
 
-            return (budgets.FindAll(b =>
-                b.User.UserId.ToString().Contains(search.ToLower()) ||
-                b.User.FirstName.ToLower().Contains(search.ToLower()) ||
-                b.User.LastName.ToLower().Contains(search.ToLower()) ||
-                b.BudgetId.ToString().Contains(search.ToLower()) ||
-                b.TotalAmtBills.ToString().Contains(search.ToLower())
+                return (budgets.FindAll(b =>
+                    b.User.UserId.ToString().Contains(search.ToLower()) ||
+                    b.User.FirstName.ToLower().Contains(search.ToLower()) ||
+                    b.User.LastName.ToLower().Contains(search.ToLower()) ||
+                    b.BudgetId.ToString().Contains(search.ToLower()) ||
+                    b.TotalAmtBills.ToString().Contains(search.ToLower())
 
+                    )).Select(Mapper.MapBudget).ToList();
+            }
+            else
+            {
+                var userBudget = _context.Budget
+                    .Include(b => b.User)
+                    .Where(d => d.User.UserId == int.Parse(userId))
+                    .ToList();
+
+                if (search == null)
+                    return userBudget.Select(Mapper.MapBudget).ToList();
+
+                return (userBudget.FindAll(f =>
+                    f.TotalAmtBills.ToString().Contains(search.ToLower())
                 )).Select(Mapper.MapBudget).ToList();
+            }
         }
 
         public async Task RemoveBudgetAsync(int id)

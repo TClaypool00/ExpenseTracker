@@ -6,7 +6,7 @@ namespace ExpenseTracker.Core.Interfaces
 {
     public interface IBudgetRepository
     {
-        Task<List<CoreBudget>> GetBudgetsAsync(string search = null);
+        Task<List<CoreBudget>> GetBudgetsAsync(string search = null, string userId = null);
 
         Task<CoreBudget> GetBudgetById(int id);
 

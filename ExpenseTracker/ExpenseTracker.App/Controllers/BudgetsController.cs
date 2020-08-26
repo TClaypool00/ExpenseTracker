@@ -28,27 +28,31 @@ namespace ExpenseTracker.App.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(List<ApiBudget>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> GetBudget([FromQuery] string search = null)
+        public async Task<ActionResult> GetBudget([FromQuery] string userId = null, string search = null)
         {
             var budgets = new List<ApiBudget>();
 
-            if (budgets.Count == 0)
-                return NotFound("No budgets found.");
+            if (userId == null && search == null)
+                budgets = (await _repo.GetBudgetsAsync()).Select(ApiMapper.MapBudgets).ToList();
             else
-            {
-                if (search != null)
-                    budgets = (await _repo.GetBudgetsAsync(search)).Select(ApiMapper.MapBudgets).ToList();
-                else
-                    budgets = (await _repo.GetBudgetsAsync()).Select(ApiMapper.MapBudgets).ToList();
+                budgets = (await _repo.GetBudgetsAsync(search, userId)).Select(ApiMapper.MapBudgets).ToList();
 
-                try
-                {
+            try
+            {
+                if (budgets.Count == 0 && search == null && userId == null)
+                    return Ok("There are no budgets.");
+                else if (budgets.Count == 0 && search != null && userId != null)
+                    return NotFound($"There are no budgets with the User ID of {userId} and search parameters of '{search}'.");
+                else if (budgets.Count == 0 && userId != null)
+                    return NotFound($"There are no budgets with User ID of {userId}.");
+                else if (budgets.Count == 0 && search != null)
+                    return NotFound($"There are budgets with '{search}'.");
+                else
                     return Ok(budgets);
-                }
-                catch (Exception)
-                {
-                    return StatusCode(500, "Something went wrong");
-                }
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Something went wrong.");
             }
         }
 
@@ -60,14 +64,21 @@ namespace ExpenseTracker.App.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> GetBudget(int id)
         {
-            if(await _repo.GetBudgetById(id) is CoreBudget budget)
+            try
             {
-                var transformed = ApiMapper.MapBudgets(budget);
+                if (await _repo.GetBudgetById(id) is CoreBudget budget)
+                {
+                    var transformed = ApiMapper.MapBudgets(budget);
 
-                return Ok(transformed);
+                    return Ok(transformed);
+                }
+            }
+            catch (NullReferenceException)
+            {
+                return NotFound($"No budgets with the Id of {id}.");
             }
 
-            return NotFound("No budgets found");
+            return Ok("No budgets found");
         }
 
         // PUT: api/Budgets/5
@@ -92,7 +103,7 @@ namespace ExpenseTracker.App.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (await _repo.BudgetExistAsync(id))
+                if (!await _repo.BudgetExistAsync(id))
                     return NotFound("Budget not found.");
                 else
                     throw;
@@ -133,12 +144,12 @@ namespace ExpenseTracker.App.Controllers
                 if(await _repo.GetBudgetById(id) is CoreBudget budget)
                 {
                     await _repo.RemoveBudgetAsync(budget.BudgetId);
-                    return Ok("Budget has been removed.");
+                    return Ok("Budget has been deleted.");
                 }
             }
-            catch(Exception e)
+            catch(NullReferenceException)
             {
-                return BadRequest(e);
+                return BadRequest($"Budget with Id of {id} does not exist.");
             }
 
             return NotFound("Budget does not exist");
