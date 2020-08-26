@@ -6,7 +6,9 @@ namespace ExpenseTracker.Core.Interfaces
 {
     public interface IBillRepository
     {
-        Task<List<CoreBills>>GetBillsAsync(string search = null);
+        Task<List<CoreBills>>GetBillsAsync(string search = null, string userId = null);
+
+        //Task<List<CoreBills>> GetBillsByUserIdAsync(string userId = null);
 
         Task<CoreBills> GetBillById(int id);
 

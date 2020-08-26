@@ -41,25 +41,45 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapBills(bill);
         }
 
-        public async Task<List<CoreBills>> GetBillsAsync(string search = null)
+        public async Task<List<CoreBills>> GetBillsAsync(string search = null, string userId = null)
         {
-            var bills = await _context.Bills
-                .Include(u => u.User)
-                .ToListAsync();
+            if (userId == null)
+            {
+                var bills = await _context.Bills
+                    .Include(u => u.User)
+                    .ToListAsync();
 
-            if (search == null)
-                return bills.Select(Mapper.MapBills).ToList();
 
-            return (bills.FindAll(b =>
-                b.User.UserId.ToString().Contains(search.ToLower()) ||
-                b.User.FirstName.ToLower().Contains(search.ToLower()) ||
-                b.User.LastName.ToLower().Contains(search.ToLower()) ||
-                b.BillId.ToString().Contains(search.ToLower()) ||
-                b.BillName.ToLower().Contains(search.ToLower()) ||
-                b.BillPrice.ToString().Contains(search.ToLower()) ||
-                b.DueDate.ToString().Contains(search.ToLower())
+                if (search == null)
+                    return bills.Select(Mapper.MapBills).ToList();
 
+                return (bills.FindAll(b =>
+                    b.User.FirstName.ToLower().Contains(search.ToLower()) ||
+                    b.User.LastName.ToLower().Contains(search.ToLower()) ||
+                    b.BillId.ToString().Contains(search.ToLower()) ||
+                    b.BillName.ToLower().Contains(search.ToLower()) ||
+                    b.BillPrice.ToString().Contains(search.ToLower()) ||
+                    b.DueDate.ToString().Contains(search.ToLower())
+
+                    )).Select(Mapper.MapBills).ToList();
+            }
+            else
+            {
+                var userBills = _context.Bills
+                    .Include(a => a.User)
+                    .Where(b => b.User.UserId == int.Parse(userId))
+                    .ToList();
+
+                if (search == null)
+                    return userBills.Select(Mapper.MapBills).ToList();
+
+                return (userBills.FindAll(d =>
+                    d.BillId.ToString().Contains(search.ToLower()) ||
+                    d.BillName.ToLower().Contains(search.ToLower()) ||
+                    d.BillPrice.ToString().Contains(search.ToLower()) ||
+                    d.DueDate.ToString().Contains(search.ToLower())
                 )).Select(Mapper.MapBills).ToList();
+            }
         }
 
         public async Task RemoveBillAsync(int id)
