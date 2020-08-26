@@ -30,9 +30,6 @@ namespace ExpenseTracker.App.Controllers
         {
             var unions = new List<ApiCreditUnion>();
 
-            if (unions == null)
-                return NotFound("The credit union are set to an istance");
-
             if (search != null)
                 unions = (await _repo.GetCreditUnionsAsync(search)).Select(ApiMapper.MapUnion).ToList();
             else
@@ -40,14 +37,16 @@ namespace ExpenseTracker.App.Controllers
 
             try
             {
-                if (unions.Count == 0)
-                    return Ok("There are credit Union");
+                if (unions.Count == 0 && search != null)
+                    return NotFound($"There are no credit unions with '{search}'.");
+                else if (unions.Count == 0)
+                    return Ok("There are credit unions.");
                 else
                     return Ok(unions);
             }
             catch (Exception)
             {
-                return StatusCode(500, "Something went wrong");
+                return StatusCode(500, "Something went wrong.");
             }
 
         }
@@ -60,11 +59,18 @@ namespace ExpenseTracker.App.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> GetCreditUnion(int id)
         {
-            if(await _repo.GetCreditUnionById(id) is CoreCreditUnion union)
+            try
             {
-                var transformed = ApiMapper.MapUnion(union);
+                if (await _repo.GetCreditUnionById(id) is CoreCreditUnion union)
+                {
+                    var transformed = ApiMapper.MapUnion(union);
 
-                return Ok(transformed);
+                    return Ok(transformed);
+                }
+            }
+            catch (NullReferenceException)
+            {
+                return NotFound($"No credit union with the id of {id}.");
             }
 
             return NotFound("There is no Credit Union by that Id.");
@@ -134,7 +140,7 @@ namespace ExpenseTracker.App.Controllers
             {
                 return BadRequest("Something went wrong.");
             }
-            return NotFound("Credit Union does not exist");
+            return NotFound("Credit Union does not exist.");
         }
     }
 }
