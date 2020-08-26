@@ -1,6 +1,10 @@
-﻿using ExpenseTracker.DataAccess.DataModels;
+﻿using ExpenseTracker.App.ApiModels;
+using ExpenseTracker.Core.CoreModels;
+using ExpenseTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,56 +15,81 @@ namespace ExpenseTracker.App.Controllers
     [ApiController]
     public class CreditUnionsController : ControllerBase
     {
-        private readonly ShoelessJoeContext _context;
+        private readonly ICreditUnionRepository _repo;
 
-        public CreditUnionsController(ShoelessJoeContext context)
+        public CreditUnionsController(ICreditUnionRepository repo)
         {
-            _context = context;
+            _repo = repo;
         }
 
         // GET: api/CreditUnions
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CreditUnion>>> GetCreditUnion()
+        [ProducesResponseType(typeof(List<ApiCreditUnion>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetCreditUnion([FromQuery] string search = null)
         {
-            return await _context.CreditUnion.ToListAsync();
+            var unions = new List<ApiCreditUnion>();
+
+            if (unions == null)
+                return NotFound("The credit union are set to an istance");
+
+            if (search != null)
+                unions = (await _repo.GetCreditUnionsAsync(search)).Select(ApiMapper.MapUnion).ToList();
+            else
+                unions = (await _repo.GetCreditUnionsAsync()).Select(ApiMapper.MapUnion).ToList();
+
+            try
+            {
+                if (unions.Count == 0)
+                    return Ok("There are credit Union");
+                else
+                    return Ok(unions);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Something went wrong");
+            }
+
         }
 
         // GET: api/CreditUnions/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<CreditUnion>> GetCreditUnion(int id)
+        [ProducesResponseType(typeof(ApiCreditUnion), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetCreditUnion(int id)
         {
-            var creditUnion = await _context.CreditUnion.FindAsync(id);
-
-            if (creditUnion == null)
+            if(await _repo.GetCreditUnionById(id) is CoreCreditUnion union)
             {
-                return NotFound();
+                var transformed = ApiMapper.MapUnion(union);
+
+                return Ok(transformed);
             }
 
-            return creditUnion;
+            return NotFound("There is no Credit Union by that Id.");
         }
 
         // PUT: api/CreditUnions/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCreditUnion(int id, CreditUnion creditUnion)
+        public async Task<IActionResult> PutCreditUnion(int id, ApiCreditUnion creditUnion)
         {
             if (id != creditUnion.UnionId)
             {
-                return BadRequest();
+                return BadRequest("Credit Union does not exist.");
             }
 
-            _context.Entry(creditUnion).State = EntityState.Modified;
+            var resource = ApiMapper.MapUnion(creditUnion);
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _repo.UpdateCreditUnionAsync(resource);
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!CreditUnionExists(id))
+                if (! await _repo.CreditUnionExistAsync(id))
                 {
-                    return NotFound();
+                    return NotFound("Credit Union not found.");
                 }
                 else
                 {
@@ -68,40 +97,44 @@ namespace ExpenseTracker.App.Controllers
                 }
             }
 
-            return NoContent();
+            return Ok("Credit Union  updated!");
         }
 
         // POST: api/CreditUnions
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<CreditUnion>> PostCreditUnion(CreditUnion creditUnion)
+        public async Task<ActionResult> PostCreditUnion(ApiCreditUnion creditUnion)
         {
-            _context.CreditUnion.Add(creditUnion);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var resource = ApiMapper.MapUnion(creditUnion);
 
-            return CreatedAtAction("GetCreditUnion", new { id = creditUnion.UnionId }, creditUnion);
+                await _repo.AddCreditUnionAsync(resource);
+
+                return Ok("Credit Union has been added!");
+            }
+            catch (Exception)
+            {
+                return BadRequest("Something went wrong");
+            }
         }
 
         // DELETE: api/CreditUnions/5
         [HttpDelete("{id}")]
-        public async Task<ActionResult<CreditUnion>> DeleteCreditUnion(int id)
+        public async Task<ActionResult> DeleteCreditUnion(int id)
         {
-            var creditUnion = await _context.CreditUnion.FindAsync(id);
-            if (creditUnion == null)
+            try
             {
-                return NotFound();
+                if(await _repo.GetCreditUnionById(id) is CoreCreditUnion union)
+                {
+                    await _repo.RemoveCreditUnionAsync(union.UnionId);
+                    return Ok("Credit Union has been deleted.");
+                }
             }
-
-            _context.CreditUnion.Remove(creditUnion);
-            await _context.SaveChangesAsync();
-
-            return creditUnion;
-        }
-
-        private bool CreditUnionExists(int id)
-        {
-            return _context.CreditUnion.Any(e => e.UnionId == id);
+            catch (Exception)
+            {
+                return BadRequest("Something went wrong.");
+            }
+            return NotFound("Credit Union does not exist");
         }
     }
 }
