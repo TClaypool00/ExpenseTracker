@@ -66,6 +66,19 @@ namespace ExpenseTracker.App.ApiModels
             };
         }
 
+        public static CoreCreditUnion MapUnion(ApiCreditUnion union)
+        {
+            return new CoreCreditUnion
+            {
+                UnionId = union.UnionId,
+                CreditUnionName = union.CreditUnionName,
+                Street = union.Street,
+                State = union.State,
+                City = union.City,
+                Zip = union.Zip
+            };
+        }
+
         /*  ************************
          *  *                      *
          *  *       Loans          *
