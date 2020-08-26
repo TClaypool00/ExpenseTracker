@@ -28,26 +28,33 @@ namespace ExpenseTracker.App.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(List<ApiBills>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> GetBills([FromQuery] string search = null)
+        public async Task<ActionResult> GetBills([FromQuery] string userId = null, string search = null)
         {
             var bills = new List<ApiBills>();
 
-            if (bills.Count == 0)
-                return NotFound("There are not bills");
-
-            if (search != null)
-                bills = (await _repo.GetBillsAsync(search)).Select(ApiMapper.MapBills).ToList();
-            else
+            if (userId == null && search == null)
                 bills = (await _repo.GetBillsAsync()).Select(ApiMapper.MapBills).ToList();
+            else
+                bills = (await _repo.GetBillsAsync(search, userId)).Select(ApiMapper.MapBills).ToList();
+
 
             try
-            {
-                return Ok(bills);
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Something went wrong");
-            }
+                {
+                if (bills.Count == 0 && search == null && userId == null)
+                    return Ok("There are no bills.");
+                else if (bills.Count == 0 && search != null && userId != null)
+                    return NotFound($"There are no bills with userId of {userId} and search parameter of '{search}'.");
+                else if (bills.Count == 0 && userId != null)
+                    return NotFound($"There are no bills with the user Id of {userId}.");
+                else if (bills.Count == 0 && search != null)
+                    return NotFound($"There are bills with '{search}'.");
+                else
+                    return Ok(bills);
+                }
+                catch (Exception)
+                {
+                    return StatusCode(500, "Something went wrong.");
+                }
         }
 
         // GET: api/Bills/5
@@ -58,14 +65,22 @@ namespace ExpenseTracker.App.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> GetBills(int id)
         {
-            if(await _repo.GetBillById(id) is CoreBills bill)
+            try
             {
-                var transformed = ApiMapper.MapBills(bill);
+                if (await _repo.GetBillById(id) is CoreBills bill)
+                {
+                    var transformed = ApiMapper.MapBills(bill);
 
-                return Ok(transformed);
+                    return Ok(transformed);
+                }
+            }
+            catch (NullReferenceException)
+            {
+                return NotFound($"No bill with the id of {id}.");
             }
 
-            return NotFound("No Bills found");
+            return Ok("There are no bills.");
+
         }
 
         // PUT: api/Bills/5
@@ -74,7 +89,7 @@ namespace ExpenseTracker.App.Controllers
         {
             if (id != bills.BillId)
             {
-                return BadRequest("Bill does not Exist");
+                return BadRequest("Bill does not exist.");
             }
 
             var resource = new CoreBills
@@ -124,7 +139,7 @@ namespace ExpenseTracker.App.Controllers
             }
             catch (Exception)
             {
-                return BadRequest("Something went wrong");
+                return BadRequest("Something went wrong.");
             }
         }
 
@@ -137,15 +152,15 @@ namespace ExpenseTracker.App.Controllers
                 if (await _repo.GetBillById(id) is CoreBills bill)
                 {
                     await _repo.RemoveBillAsync(bill.BillId);
-                    return Ok("Bill has been removed");
+                    return Ok("Bill has been deleted.");
                 }
             }
-            catch (Exception)
+            catch (NullReferenceException)
             {
-                return BadRequest("Something went wrong");
+                return BadRequest($"Bill with id of {id} does not exist.");
             }
 
-            return NotFound("Bill does not exist");
+            return NotFound("Bill does not exist.");
         }
     }
 }
