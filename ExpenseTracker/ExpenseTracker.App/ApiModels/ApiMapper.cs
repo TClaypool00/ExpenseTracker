@@ -172,5 +172,23 @@ namespace ExpenseTracker.App.ApiModels
                 PhoneNumber = users.PhoneNumber
             };
         }
+
+        public static CoreUsers MapUsers(ApiUsers users)
+        {
+            return new CoreUsers
+            {
+                UserId = users.UserId,
+                FirstName = users.FirstName,
+                LastName = users.LastName,
+                Email = users.Email,
+                Password = users.Password,
+                IsAdmin = users.IsAdmin,
+                City = users.City,
+                Street = users.Street,
+                State = users.State,
+                Zip = users.Zip,
+                PhoneNumber = users.PhoneNumber
+            };
+        }
     }
 }
