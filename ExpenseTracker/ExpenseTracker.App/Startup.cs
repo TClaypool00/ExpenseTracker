@@ -42,6 +42,7 @@ namespace ExpenseTracker.App
             services.AddScoped<ICreditUnionRepository, CreditUnionRepository>();
             services.AddScoped<INonBillsRepository, NonBillRepository>();
             services.AddScoped<ISubscriptionsRepository, SubscriptionsRepository>();
+            services.AddScoped<ILoanRepository, LoanRepository>();
             services.AddScoped<ISave, UserRepository>();
         }
 
