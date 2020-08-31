@@ -18,6 +18,8 @@ namespace ExpenseTracker.App
 {
     public class Startup
     {
+        private const string ExpenseTrackerPolicy = "AllowConfiguredOrigins";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -49,6 +51,15 @@ namespace ExpenseTracker.App
             services.AddScoped<ISubscriptionsRepository, SubscriptionsRepository>();
             services.AddScoped<ILoanRepository, LoanRepository>();
             services.AddScoped<ISave, UserRepository>();
+
+            //CORS
+            services.AddCors(options =>
+            {
+                options.AddPolicy(ExpenseTrackerPolicy, builder =>
+                    builder.WithOrigins("http://localhost:4200")
+                    .AllowAnyMethod()
+                    .AllowAnyHeader());
+            });
 
             //Authenitication
             services.AddControllers(options =>
