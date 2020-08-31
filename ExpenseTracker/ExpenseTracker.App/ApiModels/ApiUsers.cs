@@ -14,5 +14,6 @@
         public int Zip { get; set; }
         public string PhoneNumber { get; set; }
         public decimal Salary { get; set; }
+        public string Token { get; set; }
     }
 }
