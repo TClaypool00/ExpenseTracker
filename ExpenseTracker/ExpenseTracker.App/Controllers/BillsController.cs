@@ -51,10 +51,10 @@ namespace ExpenseTracker.App.Controllers
                 else
                     return Ok(bills);
                 }
-                catch (Exception)
-                {
-                    return StatusCode(500, "Something went wrong.");
-                }
+            catch (Exception)
+            {
+                return StatusCode(500, "Something went wrong.");
+            }
         }
 
         // GET: api/Bills/5
@@ -108,7 +108,7 @@ namespace ExpenseTracker.App.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (await _repo.BillExistAsync(id))
+                if (!await _repo.BillExistAsync(id))
                     return NotFound("Bill not found");
                 else
                     throw;
@@ -137,9 +137,9 @@ namespace ExpenseTracker.App.Controllers
 
                 return Ok("Bill had been added!");
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                return BadRequest("Something went wrong.");
+                return BadRequest($"Something went wrong. {e.Message}");
             }
         }
 

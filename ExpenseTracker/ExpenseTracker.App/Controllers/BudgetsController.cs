@@ -50,9 +50,9 @@ namespace ExpenseTracker.App.Controllers
                 else
                     return Ok(budgets);
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                return StatusCode(500, "Something went wrong.");
+                return BadRequest(e.Message);
             }
         }
 

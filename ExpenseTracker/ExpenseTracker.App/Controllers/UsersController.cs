@@ -1,6 +1,10 @@
-﻿using ExpenseTracker.DataAccess.DataModels;
+﻿using ExpenseTracker.App.ApiModels;
+using ExpenseTracker.Core.CoreModels;
+using ExpenseTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,56 +15,87 @@ namespace ExpenseTracker.App.Controllers
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private readonly ShoelessJoeContext _context;
+        private readonly IUserRepository _repo;
 
-        public UsersController(ShoelessJoeContext context)
+        public UsersController(IUserRepository repo)
         {
-            _context = context;
+            _repo = repo;
         }
 
         // GET: api/Users
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Users>>> GetUsers()
+        [ProducesResponseType(typeof(List<ApiUsers>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetUsers([FromQuery] string search = null)
         {
-            return await _context.Users.ToListAsync();
+            var users = new List<ApiUsers>();
+
+            if (search == null)
+                users = (await _repo.GetUsersAsync()).Select(ApiMapper.MapUsers).ToList();
+            else
+                users = (await _repo.GetUsersAsync(search)).Select(ApiMapper.MapUsers).ToList();
+
+            try
+            {
+                if (users.Count == 0 && search == null)
+                    return Ok("There are no Users");
+                else if (users.Count == 0 && search != null)
+                    return NotFound($"No users with search parameters '{search}' found.");
+                else
+                    return Ok(users);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, e.Message);
+            }
         }
 
         // GET: api/Users/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Users>> GetUsers(int id)
+        [ProducesResponseType(typeof(ApiUsers), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> GetUsers(int id)
         {
-            var users = await _context.Users.FindAsync(id);
-
-            if (users == null)
+            try
             {
-                return NotFound();
+                if (await _repo.GetUserById(id) is CoreUsers sub)
+                {
+                    var resource = ApiMapper.MapUsers(sub);
+                    return Ok(resource);
+                }
+            }
+            catch (NullReferenceException)
+            {
+                return NotFound($"No Users with an id of {id} was found.");
             }
 
-            return users;
+            return Ok("There are no Users.");
         }
 
         // PUT: api/Users/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUsers(int id, Users users)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PutUsers(int id, ApiUsers users)
         {
             if (id != users.UserId)
             {
-                return BadRequest();
+                return BadRequest("User does not exist.");
             }
 
-            _context.Entry(users).State = EntityState.Modified;
+            var resource = ApiMapper.MapUsers(users);
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _repo.UpdateUserAsync(resource);
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!UsersExists(id))
+                if (!await _repo.UserExistAsync(id))
                 {
-                    return NotFound();
+                    return NotFound("User not found.");
                 }
                 else
                 {
@@ -68,40 +103,47 @@ namespace ExpenseTracker.App.Controllers
                 }
             }
 
-            return NoContent();
+            return Ok("User updated.");
         }
 
         // POST: api/Users
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<Users>> PostUsers(Users users)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> PostUsers(ApiUsers users)
         {
-            _context.Users.Add(users);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var resource = ApiMapper.MapUsers(users);
 
-            return CreatedAtAction("GetUsers", new { id = users.UserId }, users);
+                await _repo.AddUserAsync(resource);
+                return Ok("User added!");
+            }
+            catch(Exception e)
+            {
+                return BadRequest(e.Message);
+            }
         }
 
         // DELETE: api/Users/5
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Users>> DeleteUsers(int id)
+        public async Task<ActionResult> DeleteUsers(int id)
         {
-            var users = await _context.Users.FindAsync(id);
-            if (users == null)
+            try
             {
-                return NotFound();
+                if (await _repo.GetUserById(id) is CoreUsers sub)
+                {
+                    await _repo.RemoveUserAsync(sub.UserId);
+                    return Ok("User has been deleted.");
+                }
+            }
+            catch (NullReferenceException)
+            {
+                return BadRequest($"User with id of {id} does not exist.");
             }
 
-            _context.Users.Remove(users);
-            await _context.SaveChangesAsync();
-
-            return users;
-        }
-
-        private bool UsersExists(int id)
-        {
-            return _context.Users.Any(e => e.UserId == id);
+            return NotFound("User does exist.");
         }
     }
 }

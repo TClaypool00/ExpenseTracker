@@ -1,6 +1,10 @@
-﻿using ExpenseTracker.DataAccess.DataModels;
+﻿using ExpenseTracker.App.ApiModels;
+using ExpenseTracker.Core.CoreModels;
+using ExpenseTracker.Core.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,97 +15,161 @@ namespace ExpenseTracker.App.Controllers
     [ApiController]
     public class LoansController : ControllerBase
     {
-        private readonly ShoelessJoeContext _context;
+        private readonly ILoanRepository _repo;
+        private readonly IUserRepository _userRepo;
+        private readonly ICreditUnionRepository _unionRepo;
 
-        public LoansController(ShoelessJoeContext context)
+        public LoansController(ILoanRepository repo, IUserRepository userRepo, ICreditUnionRepository unionRepo)
         {
-            _context = context;
+            _repo = repo;
+            _userRepo = userRepo;
+            _unionRepo = unionRepo;
         }
 
         // GET: api/Loans
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Loan>>> GetLoan()
+        [ProducesResponseType(typeof(List<ApiLoan>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> GetLoan([FromQuery] string userId = null, string search = null)
         {
-            return await _context.Loan.ToListAsync();
+            var loans = new List<ApiLoan>();
+
+            if (userId == null && search == null)
+                loans = (await _repo.GetLoanAsync()).Select(ApiMapper.MapLoan).ToList();
+            else
+                loans = (await _repo.GetLoanAsync(userId,search)).Select(ApiMapper.MapLoan).ToList();
+
+            try
+            {
+                if (loans.Count == 0 && search == null && userId == null)
+                    return Ok("There are no Loans.");
+                else if (loans.Count == 0 && search != null && userId != null)
+                    return NotFound($"There are no Loans with userId of {userId} and search parameter of '{search}'.");
+                else if (loans.Count == 0 && userId != null)
+                    return NotFound($"There are no Loans with the user Id of {userId}.");
+                else if (loans.Count == 0 && search != null)
+                    return NotFound($"There are Loans with '{search}'.");
+                else
+                    return Ok(loans);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Something went wrong.");
+            }
         }
 
         // GET: api/Loans/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Loan>> GetLoan(int id)
+        [ProducesResponseType(typeof(ApiLoan), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> GetLoan(int id)
         {
-            var loan = await _context.Loan.FindAsync(id);
-
-            if (loan == null)
+            try
             {
-                return NotFound();
-            }
+                if(await _repo.GetLoanById(id) is CoreLoan loan)
+                {
+                    var transformed = ApiMapper.MapLoan(loan);
 
-            return loan;
+                    return Ok(transformed);
+                }
+            }
+            catch (NullReferenceException)
+            {
+                return NotFound($"No loan with the id of {id}.");
+            }
+            return Ok("There is no loan.");
         }
 
         // PUT: api/Loans/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutLoan(int id, Loan loan)
+        [ProducesResponseType(typeof(ApiLoan), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> PutLoan(int id, ApiLoan loan)
         {
             if (id != loan.LoanId)
             {
-                return BadRequest();
+                return BadRequest("Loan does not exist.");
             }
 
-            _context.Entry(loan).State = EntityState.Modified;
+            var resource = new CoreLoan
+            {
+                LoanId = loan.LoanId,
+                Deposit = loan.Deposit,
+                MonthlyAmountDue = loan.MonthlyAmountDue,
+                PaymentDueDate = loan.PaymentDueDate,
+                TotalAmountDue = loan.TotalAmountDue,
+                User = (await _userRepo.GetUserById(loan.UserId)),
+                Union = (await _unionRepo.GetCreditUnionById(loan.UnionId))
+            };
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _repo.UpdateLoanAsync(resource);
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!LoanExists(id))
-                {
-                    return NotFound();
-                }
+                if (!await _repo.LoanExistAsync(id))
+                    return NotFound("Loan not found.");
                 else
-                {
                     throw;
-                }
             }
 
-            return NoContent();
+            return Ok("Loan updated!");
         }
 
         // POST: api/Loans
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<Loan>> PostLoan(Loan loan)
+        [ProducesResponseType(typeof(ApiLoan), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> PostLoan(ApiLoan loan)
         {
-            _context.Loan.Add(loan);
-            await _context.SaveChangesAsync();
+            try
+            {
+                var resource = new CoreLoan
+                {
+                    LoanId = loan.LoanId,
+                    Deposit = loan.Deposit,
+                    MonthlyAmountDue = loan.MonthlyAmountDue,
+                    PaymentDueDate = loan.PaymentDueDate,
+                    TotalAmountDue = loan.TotalAmountDue,
+                    User = (await _userRepo.GetUserById(loan.UserId)),
+                    Union = (await _unionRepo.GetCreditUnionById(loan.UnionId))
+                };
 
-            return CreatedAtAction("GetLoan", new { id = loan.LoanId }, loan);
+                await _repo.AddLoanAsync(resource);
+
+                return Ok("Loan added!");
+            }
+            catch(Exception e)
+            {
+                return BadRequest($"Error! {e.Message}");
+            }
         }
 
         // DELETE: api/Loans/5
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Loan>> DeleteLoan(int id)
+        [ProducesResponseType(typeof(ApiLoan), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> DeleteLoan(int id)
         {
-            var loan = await _context.Loan.FindAsync(id);
-            if (loan == null)
+            try
             {
-                return NotFound();
+                if(await _repo.GetLoanById(id) is CoreLoan loan)
+                {
+                    await _repo.RemoveLoanAsync(loan.LoanId);
+                    return Ok("Bill has been deleted.");
+                }
             }
-
-            _context.Loan.Remove(loan);
-            await _context.SaveChangesAsync();
-
-            return loan;
-        }
-
-        private bool LoanExists(int id)
-        {
-            return _context.Loan.Any(e => e.LoanId == id);
+            catch (NullReferenceException)
+            {
+                return BadRequest($"Loan with id of {id} does not exist.");
+            }
+            return NotFound("Bill does not exist.");
         }
     }
 }
