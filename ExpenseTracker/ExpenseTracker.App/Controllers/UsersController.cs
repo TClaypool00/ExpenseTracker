@@ -128,13 +128,16 @@ namespace ExpenseTracker.App.Controllers
 
         // DELETE: api/Users/5
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> DeleteUsers(int id)
         {
             try
             {
-                if (await _repo.GetUserById(id) is CoreUsers sub)
+                if (await _repo.GetUserById(id) is CoreUsers user)
                 {
-                    await _repo.RemoveUserAsync(sub.UserId);
+                    await _repo.RemoveUserAsync(user.UserId);
                     return Ok("User has been deleted.");
                 }
             }
