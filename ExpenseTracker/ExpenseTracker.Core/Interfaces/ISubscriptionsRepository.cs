@@ -6,7 +6,7 @@ namespace ExpenseTracker.Core.Interfaces
 {
     public interface ISubscriptionsRepository
     {
-        Task<List<CoreSubscriptions>> GetSubscriptionsAsync(string search = null);
+        Task<List<CoreSubscriptions>> GetSubscriptionsAsync(string userId = null ,string search = null);
 
         Task<CoreSubscriptions> GetSubscriptionById(int id);
 

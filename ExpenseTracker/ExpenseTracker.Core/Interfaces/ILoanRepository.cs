@@ -6,7 +6,7 @@ namespace ExpenseTracker.Core.Interfaces
 {
     public interface ILoanRepository
     {
-        Task<List<CoreLoan>> GetLoanAsync(string search = null);
+        Task<List<CoreLoan>> GetLoanAsync(string search = null, string userId = null, string creditUnion = null);
 
         Task<CoreLoan> GetLoanById(int id);
 

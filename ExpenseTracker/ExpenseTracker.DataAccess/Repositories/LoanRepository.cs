@@ -27,7 +27,7 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapLoan(newLoan);
         }
 
-        public async Task<List<CoreLoan>> GetLoanAsync(string search = null)
+        public async Task<List<CoreLoan>> GetLoanAsync(string search = null, string userId = null, string creditUnion = null)
         {
             var loans = await _context.Loan
                 .Include(u => u.User)
@@ -38,14 +38,11 @@ namespace ExpenseTracker.DataAccess.Repositories
                 return loans.Select(Mapper.MapLoan).ToList();
 
             return (loans.FindAll(l =>
-            l.LoanId.ToString().Contains(search) ||
             l.MonthlyAmountDue.ToString().Contains(search) ||
             l.Deposit.ToString().Contains(search) ||
             l.TotalAmountDue.ToString().Contains(search) ||
-            l.User.UserId.ToString().Contains(search) ||
             l.User.FirstName.ToLower().Contains(search.ToLower()) ||
             l.User.LastName.ToLower().Contains(search.ToLower()) ||
-            l.Union.UnionId.ToString().Contains(search) ||
             l.Union.CreditUnionName.ToLower().Contains(search.ToLower())
             )).Select(Mapper.MapLoan).ToList();
         }

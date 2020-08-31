@@ -37,24 +37,41 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapSub(sub);
         }
 
-        public async Task<List<CoreSubscriptions>> GetSubscriptionsAsync(string search = null)
+        public async Task<List<CoreSubscriptions>> GetSubscriptionsAsync(string useId = null, string search = null)
         {
-            var subs = await _context.Subscriptions
-                .Include(u => u.User)
-                .ToListAsync();
+            if (useId == null)
+            {
+                var subs = await _context.Subscriptions
+                    .Include(u => u.User)
+                    .ToListAsync();
 
-            if (search is null)
-                return subs.Select(Mapper.MapSub).ToList();
+                if (search is null)
+                    return subs.Select(Mapper.MapSub).ToList();
 
-            return (subs.FindAll(s =>
-                s.SubId.ToString().Contains(search) ||
-                s.CompanyName.ToLower().Contains(search.ToLower()) ||
-                s.DueDate.ToString().Contains(search) ||
-                s.AmountDue.ToString().Contains(search) ||
-                s.User.UserId.ToString().Contains(search.ToLower()) ||
-                s.User.FirstName.ToLower().Contains(search.ToLower()) ||
-                s.User.LastName.ToLower().Contains(search.ToLower())
-                )).Select(Mapper.MapSub).ToList();
+                return (subs.FindAll(s =>
+                    s.CompanyName.ToLower().Contains(search.ToLower()) ||
+                    s.DueDate.ToString().Contains(search) ||
+                    s.AmountDue.ToString().Contains(search) ||
+                    s.User.FirstName.ToLower().Contains(search.ToLower()) ||
+                    s.User.LastName.ToLower().Contains(search.ToLower())
+                    )).Select(Mapper.MapSub).ToList();
+            }
+            else
+            {
+                var subs = await _context.Subscriptions
+                    .Include(u => u.User)
+                    .Where(a => a.User.UserId == int.Parse(useId))
+                    .ToListAsync();
+
+                if (search is null)
+                    return subs.Select(Mapper.MapSub).ToList();
+
+                return (subs.FindAll(s =>
+                    s.CompanyName.ToLower().Contains(search.ToLower()) ||
+                    s.DueDate.ToString().Contains(search) ||
+                    s.AmountDue.ToString().Contains(search)
+                    )).Select(Mapper.MapSub).ToList();
+            }
         }
 
         public async Task RemoveSubscriptionAsync(int id)

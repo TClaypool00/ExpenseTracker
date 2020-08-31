@@ -37,23 +37,39 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapNonBills(bill);
         }
 
-        public async Task<List<CoreNonBills>> GetNonBillsAsync(string search = null)
+        public async Task<List<CoreNonBills>> GetNonBillsAsync(string userId = null, string search = null)
         {
-            var bills = await _conetext.NonBills
-                .Include(u => u.User)
-                .ToListAsync();
+            if (userId == null)
+            {
+                var bills = await _conetext.NonBills
+                    .Include(u => u.User)
+                    .ToListAsync();
 
-            if (search == null)
-                return bills.Select(Mapper.MapNonBills).ToList();
+                if (search == null)
+                    return bills.Select(Mapper.MapNonBills).ToList();
 
-            return (bills.FindAll(b =>
-                b.NonBillId.ToString().Contains(search) ||
-                b.StoreName.ToLower().Contains(search.ToLower()) ||
-                b.Price.ToString().Contains(search) ||
-                b.User.UserId.ToString().Contains(search.ToLower()) ||
-                b.User.FirstName.ToLower().Contains(search.ToLower()) ||
-                b.User.LastName.ToLower().Contains(search.ToLower())
-                )).Select(Mapper.MapNonBills).ToList();
+                return (bills.FindAll(b =>
+                    b.StoreName.ToLower().Contains(search.ToLower()) ||
+                    b.Price.ToString().Contains(search) ||
+                    b.User.FirstName.ToLower().Contains(search.ToLower()) ||
+                    b.User.LastName.ToLower().Contains(search.ToLower())
+                    )).Select(Mapper.MapNonBills).ToList();
+            }
+            else
+            {
+                var bills = await _conetext.NonBills
+                    .Include(u => u.User)
+                    .Where(a => a.User.UserId == int.Parse(userId))
+                    .ToListAsync();
+
+                if (search == null)
+                    return bills.Select(Mapper.MapNonBills).ToList();
+
+                return (bills.FindAll(b =>
+                    b.StoreName.ToLower().Contains(search.ToLower()) ||
+                    b.Price.ToString().Contains(search)
+                    )).Select(Mapper.MapNonBills).ToList();
+            }
         }
 
         public async Task<bool> NonBillExistAsync(int id)
