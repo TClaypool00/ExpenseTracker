@@ -31,22 +31,22 @@ namespace ExpenseTracker.App.Controllers
         [ProducesResponseType(typeof(List<ApiLoan>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult> GetLoan([FromQuery] string userId = null, string search = null)
+        public async Task<ActionResult> GetLoan([FromQuery] int userId = 0, string search = null)
         {
             var loans = new List<ApiLoan>();
 
-            if (userId == null && search == null)
+            if (userId == 0 && search == null)
                 loans = (await _repo.GetLoanAsync()).Select(ApiMapper.MapLoan).ToList();
             else
-                loans = (await _repo.GetLoanAsync(userId,search)).Select(ApiMapper.MapLoan).ToList();
+                loans = (await _repo.GetLoanAsync(search, userId)).Select(ApiMapper.MapLoan).ToList();
 
             try
             {
-                if (loans.Count == 0 && search == null && userId == null)
+                if (loans.Count == 0 && search == null && userId == 0)
                     return Ok("There are no Loans.");
-                else if (loans.Count == 0 && search != null && userId != null)
+                else if (loans.Count == 0 && search != null && userId != 0)
                     return NotFound($"There are no Loans with userId of {userId} and search parameter of '{search}'.");
-                else if (loans.Count == 0 && userId != null)
+                else if (loans.Count == 0 && userId != 0)
                     return NotFound($"There are no Loans with the user Id of {userId}.");
                 else if (loans.Count == 0 && search != null)
                     return NotFound($"There are Loans with '{search}'.");

@@ -37,9 +37,9 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapSub(sub);
         }
 
-        public async Task<List<CoreSubscriptions>> GetSubscriptionsAsync(string useId = null, string search = null)
+        public async Task<List<CoreSubscriptions>> GetSubscriptionsAsync(int userId = 0, string search = null)
         {
-            if (useId == null)
+            if (userId == 0)
             {
                 var subs = await _context.Subscriptions
                     .Include(u => u.User)
@@ -60,7 +60,7 @@ namespace ExpenseTracker.DataAccess.Repositories
             {
                 var subs = await _context.Subscriptions
                     .Include(u => u.User)
-                    .Where(a => a.User.UserId == int.Parse(useId))
+                    .Where(a => a.User.UserId == userId)
                     .ToListAsync();
 
                 if (search is null)

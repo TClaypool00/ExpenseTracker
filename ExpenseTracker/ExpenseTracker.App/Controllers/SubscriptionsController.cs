@@ -29,22 +29,22 @@ namespace ExpenseTracker.App.Controllers
         [ProducesResponseType(typeof(List<ApiSubscriptions>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> GetSubscriptions([FromQuery] string userId = null, string search = null)
+        public async Task<ActionResult> GetSubscriptions([FromQuery] int userId = 0, string search = null)
         {
             var subs = new List<ApiSubscriptions>();
 
-            if (userId == null && search == null)
+            if (userId == 0 && search == null)
                 subs = (await _repo.GetSubscriptionsAsync()).Select(ApiMapper.MapSub).ToList();
             else
                 subs = (await _repo.GetSubscriptionsAsync(userId, search)).Select(ApiMapper.MapSub).ToList();
 
             try
             {
-                if (subs.Count == 0 && search == null && userId == null)
+                if (subs.Count == 0 && search == null && userId == 0)
                     return Ok("There are no bills.");
-                else if (subs.Count == 0 && search != null && userId != null)
+                else if (subs.Count == 0 && search != null && userId != 0)
                     return NotFound($"There are no bills with userId of {userId} and search parameter of '{search}'.");
-                else if (subs.Count == 0 && userId != null)
+                else if (subs.Count == 0 && userId != 0)
                     return NotFound($"There are no bills with the user Id of {userId}.");
                 else if (subs.Count == 0 && search != null)
                     return NotFound($"There are bills with '{search}'.");

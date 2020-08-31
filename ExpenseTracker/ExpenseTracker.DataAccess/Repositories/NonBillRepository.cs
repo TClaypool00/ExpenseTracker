@@ -37,9 +37,9 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapNonBills(bill);
         }
 
-        public async Task<List<CoreNonBills>> GetNonBillsAsync(string userId = null, string search = null)
+        public async Task<List<CoreNonBills>> GetNonBillsAsync(int userId = 0, string search = null)
         {
-            if (userId == null)
+            if (userId == 0)
             {
                 var bills = await _conetext.NonBills
                     .Include(u => u.User)
@@ -59,7 +59,7 @@ namespace ExpenseTracker.DataAccess.Repositories
             {
                 var bills = await _conetext.NonBills
                     .Include(u => u.User)
-                    .Where(a => a.User.UserId == int.Parse(userId))
+                    .Where(a => a.User.UserId == userId)
                     .ToListAsync();
 
                 if (search == null)

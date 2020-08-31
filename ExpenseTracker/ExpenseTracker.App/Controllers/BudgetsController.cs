@@ -28,22 +28,22 @@ namespace ExpenseTracker.App.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(List<ApiBudget>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> GetBudget([FromQuery] string userId = null, string search = null)
+        public async Task<ActionResult> GetBudget([FromQuery] int userId = 0, string search = null)
         {
             var budgets = new List<ApiBudget>();
 
-            if (userId == null && search == null)
+            if (userId == 0 && search == null)
                 budgets = (await _repo.GetBudgetsAsync()).Select(ApiMapper.MapBudgets).ToList();
             else
                 budgets = (await _repo.GetBudgetsAsync(search, userId)).Select(ApiMapper.MapBudgets).ToList();
 
             try
             {
-                if (budgets.Count == 0 && search == null && userId == null)
+                if (budgets.Count == 0 && search == null && userId == 0)
                     return Ok("There are no budgets.");
-                else if (budgets.Count == 0 && search != null && userId != null)
+                else if (budgets.Count == 0 && search != null && userId != 0)
                     return NotFound($"There are no budgets with the User ID of {userId} and search parameters of '{search}'.");
-                else if (budgets.Count == 0 && userId != null)
+                else if (budgets.Count == 0 && userId != 0)
                     return NotFound($"There are no budgets with User ID of {userId}.");
                 else if (budgets.Count == 0 && search != null)
                     return NotFound($"There are budgets with '{search}'.");

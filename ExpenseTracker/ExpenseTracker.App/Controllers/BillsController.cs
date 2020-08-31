@@ -28,11 +28,11 @@ namespace ExpenseTracker.App.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(List<ApiBills>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> GetBills([FromQuery] string userId = null, string search = null)
+        public async Task<ActionResult> GetBills([FromQuery] int userId = 0, string search = null)
         {
             var bills = new List<ApiBills>();
 
-            if (userId == null && search == null)
+            if (userId == 0 && search == null)
                 bills = (await _repo.GetBillsAsync()).Select(ApiMapper.MapBills).ToList();
             else
                 bills = (await _repo.GetBillsAsync(search, userId)).Select(ApiMapper.MapBills).ToList();
@@ -40,11 +40,11 @@ namespace ExpenseTracker.App.Controllers
 
             try
                 {
-                if (bills.Count == 0 && search == null && userId == null)
+                if (bills.Count == 0 && search == null && userId == 0)
                     return Ok("There are no bills.");
-                else if (bills.Count == 0 && search != null && userId != null)
+                else if (bills.Count == 0 && search != null && userId != 0)
                     return NotFound($"There are no bills with userId of {userId} and search parameter of '{search}'.");
-                else if (bills.Count == 0 && userId != null)
+                else if (bills.Count == 0 && userId != 0)
                     return NotFound($"There are no bills with the user Id of {userId}.");
                 else if (bills.Count == 0 && search != null)
                     return NotFound($"There are bills with '{search}'.");

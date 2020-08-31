@@ -27,24 +27,45 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapLoan(newLoan);
         }
 
-        public async Task<List<CoreLoan>> GetLoanAsync(string search = null, string userId = null, string creditUnion = null)
+        public async Task<List<CoreLoan>> GetLoanAsync(string search = null, int userId = 0, int creditUnionId = 0)
         {
-            var loans = await _context.Loan
-                .Include(u => u.User)
-                .Include(c => c.Union)
-                .ToListAsync();
+            if (userId == 0)
+            {
+                var loans = await _context.Loan
+                    .Include(u => u.User)
+                    .Include(c => c.Union)
+                    .ToListAsync();
 
-            if (search is null)
-                return loans.Select(Mapper.MapLoan).ToList();
+                if (search is null)
+                    return loans.Select(Mapper.MapLoan).ToList();
 
-            return (loans.FindAll(l =>
-            l.MonthlyAmountDue.ToString().Contains(search) ||
-            l.Deposit.ToString().Contains(search) ||
-            l.TotalAmountDue.ToString().Contains(search) ||
-            l.User.FirstName.ToLower().Contains(search.ToLower()) ||
-            l.User.LastName.ToLower().Contains(search.ToLower()) ||
-            l.Union.CreditUnionName.ToLower().Contains(search.ToLower())
-            )).Select(Mapper.MapLoan).ToList();
+                return (loans.FindAll(l =>
+                l.MonthlyAmountDue.ToString().Contains(search) ||
+                l.Deposit.ToString().Contains(search) ||
+                l.TotalAmountDue.ToString().Contains(search) ||
+                l.User.FirstName.ToLower().Contains(search.ToLower()) ||
+                l.User.LastName.ToLower().Contains(search.ToLower()) ||
+                l.Union.CreditUnionName.ToLower().Contains(search.ToLower())
+                )).Select(Mapper.MapLoan).ToList();
+            }
+            else
+            {
+                var loans = await _context.Loan
+                    .Include(u => u.User)
+                    .Include(c => c.Union)
+                    .Where(a => a.User.UserId == userId)
+                    .ToListAsync();
+
+                if (search is null)
+                    return loans.Select(Mapper.MapLoan).ToList();
+
+                return (loans.FindAll(l =>
+                l.MonthlyAmountDue.ToString().Contains(search) ||
+                l.Deposit.ToString().Contains(search) ||
+                l.TotalAmountDue.ToString().Contains(search) ||
+                l.Union.CreditUnionName.ToLower().Contains(search.ToLower())
+                )).Select(Mapper.MapLoan).ToList();
+            }
         }
 
         public async Task<CoreLoan> GetLoanById(int id)

@@ -43,9 +43,9 @@ namespace ExpenseTracker.DataAccess.Repositories
             return Mapper.MapBudget(budget);
         }
 
-        public async Task<List<CoreBudget>> GetBudgetsAsync(string search = null, string userId = null)
+        public async Task<List<CoreBudget>> GetBudgetsAsync(string search = null, int userId = 0)
         {
-            if (userId == null)
+            if (userId == 0)
             {
                 var budgets = await _context.Budget
                     .Include(u => u.User)
@@ -67,7 +67,7 @@ namespace ExpenseTracker.DataAccess.Repositories
             {
                 var userBudget = _context.Budget
                     .Include(b => b.User)
-                    .Where(d => d.User.UserId == int.Parse(userId))
+                    .Where(d => d.User.UserId == userId)
                     .ToList();
 
                 if (search == null)
